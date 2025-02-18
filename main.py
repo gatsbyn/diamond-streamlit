@@ -266,7 +266,7 @@ def extract_gia_number(description):
 st.markdown("""
     <div style='background-color: #2c3e50; color: white; padding: 2rem; border-radius: 0.5rem; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);'>
         <h3 style='margin-bottom: 1rem; color: #3498db;'>Instructions</h3>
-        <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>1. Upload your Trade+Search Excel file using the button below</p>
+        <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>1. Upload your Excel file using the button below</p>
         <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>2. The tool will automatically process the data and extract key information</p>
         <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>3. Review the processed data in the interactive table</p>
         <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>4. Download the processed file for further use</p>
@@ -277,7 +277,7 @@ st.markdown("""
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
     st.markdown('<div class="uploadBox">', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("📂 Upload Trade+Search File", type=["xlsx"])
+    uploaded_file = st.file_uploader("📂 Upload File", type=["xlsx"])
     st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_file:
@@ -363,7 +363,7 @@ if uploaded_file:
             st.markdown("<p style='text-align: center;'>Distribution of Clarity</p>", unsafe_allow_html=True)
 
 else:
-    st.info("👆 Please upload your Trade+Search file to begin the analysis.")
+    st.info("👆 Please upload your file to begin the analysis.")
 
 # Footer
 st.markdown("""
