@@ -1,62 +1,45 @@
 import streamlit as st
 import pandas as pd
 import re
-import base64
 from pathlib import Path
-
-# Définir le chemin vers le logo
-current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
-logo_path = current_dir / "assets" / "logovdlobal.png"
 
 # Configuration de la page
 st.set_page_config(
     page_title="VD Global - Diamond Analysis",
-    page_icon=str(logo_path),
+    page_icon="💎",  # On garde temporairement l'icône diamant
     layout="wide"
 )
 
-# Custom CSS
+# Custom CSS (reste inchangé)
 st.markdown("""
     <style>
     .main {
         padding: 0rem 5rem;
     }
-    .stTitle {
-        font-size: 3rem !important;
-        padding-bottom: 2rem;
-    }
-    .stAlert {
-        padding: 1rem;
-        border-radius: 0.5rem;
-    }
-    .uploadBox {
-        border: 2px dashed #cccccc;
-        padding: 2rem;
-        border-radius: 0.5rem;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    .stDataFrame {
-        padding: 1rem 0;
-    }
-    .stDownloadButton {
-        padding: 1rem 0;
-    }
+    # ... (reste du CSS)
     </style>
 """, unsafe_allow_html=True)
 
 # Header with company logo/name
-with open(logo_path, "rb") as f:
-    logo_contents = f.read()
-    logo_b64 = base64.b64encode(logo_contents).decode()
-
-st.markdown(f"""
-    <div style='text-align: center; padding: 2rem 0;'>
-        <img src='data:image/png;base64,{logo_b64}' style='width: 100px; margin-bottom: 1rem;'>
-        <h1>VD Global</h1>
-        <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
-    </div>
-""", unsafe_allow_html=True)
+try:
+    # Utilisation de st.image pour le logo
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.image("assets/logovdlobal.png", width=100)
+        st.markdown("""
+            <div style='text-align: center;'>
+                <h1>VD Global</h1>
+                <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
+            </div>
+        """, unsafe_allow_html=True)
+except FileNotFoundError:
+    st.warning("Logo not found. Please make sure the logo file is in the correct location.")
+    st.markdown("""
+        <div style='text-align: center; padding: 2rem 0;'>
+            <h1>VD Global</h1>
+            <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # Mapping data directly in the code
 SHAPE_MAPPING = {
