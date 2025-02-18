@@ -274,12 +274,12 @@ def extract_gia_number(description):
 
 # Interface principale
 st.markdown("""
-    <div style='background-color: #f8f9fa; padding: 2rem; border-radius: 0.5rem; margin: 2rem 0;'>
-        <h3 style='margin-bottom: 1rem;'>Instructions</h3>
-        <p>1. Upload your Trade+Search Excel file using the button below</p>
-        <p>2. The tool will automatically process the data and extract key information</p>
-        <p>3. Review the processed data in the interactive table</p>
-        <p>4. Download the processed file for further use</p>
+    <div style='background-color: #2c3e50; color: white; padding: 2rem; border-radius: 0.5rem; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);'>
+        <h3 style='margin-bottom: 1rem; color: #3498db;'>Instructions</h3>
+        <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>1. Upload your Trade+Search Excel file using the button below</p>
+        <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>2. The tool will automatically process the data and extract key information</p>
+        <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>3. Review the processed data in the interactive table</p>
+        <p style='color: #ecf0f1; margin-bottom: 0.5rem;'>4. Download the processed file for further use</p>
     </div>
 """, unsafe_allow_html=True)
 
