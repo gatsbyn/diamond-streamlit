@@ -5,7 +5,7 @@ from logotest import LOGO_BASE64  # Import de la chaîne base64
 
 # Configuration de la page
 st.set_page_config(
-    page_title="VD Global - Diamond Analysis",
+    page_title="VD Global - Diamond Analysis lol",
     page_icon="💎",
     layout="wide"
 )
