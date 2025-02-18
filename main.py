@@ -42,7 +42,8 @@ st.markdown("""
 # Header with company logo/name
 st.markdown("""
     <div style='text-align: center; padding: 2rem 0;'>
-        <h1>💎 VD Global</h1>
+        <img src='logovdlobal.png' style='width: 100px; margin-bottom: 1rem;'>
+        <h1>VD Global</h1>
         <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
     </div>
 """, unsafe_allow_html=True)
