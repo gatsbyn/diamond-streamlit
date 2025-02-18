@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
-from PIL import Image
-import os
+from logotest import LOGO_BASE64  # Import de la chaîne base64
 
 # Configuration de la page
 st.set_page_config(
@@ -17,42 +16,40 @@ st.markdown("""
     .main {
         padding: 0rem 5rem;
     }
-    div[data-testid="stImage"] {
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0px;
+        margin-bottom: 0;
+    }
+    .logo {
+        width: 150px;
+    }
+    .title-text {
+        margin: 0;
+        font-size: 2.5em;
+        color: white;
+    }
+    .subtitle-text {
+        font-size: 1.2rem;
+        color: #666;
         text-align: center;
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
+        margin-top: 0;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Essayer de charger le logo depuis le dossier assets
-try:
-    # Utiliser directement le chemin relatif vers le dossier assets
-    st.image("assets/logovdglobal.png", width=200)
-    st.markdown("""
-        <div style='text-align: center;'>
-            <h1>VD Global</h1>
-            <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
-        </div>
-    """, unsafe_allow_html=True)
-except Exception as e:
-    # En cas d'échec, essayer le dossier static
-    try:
-        st.image("static/logovdglobal.png", width=200)
-        st.markdown("""
-            <div style='text-align: center;'>
-                <h1>VD Global</h1>
-                <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
-            </div>
-        """, unsafe_allow_html=True)
-    except Exception as e:
-        st.markdown("""
-            <div style='text-align: center; padding: 2rem 0;'>
-                <h1>VD Global</h1>
-                <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
-            </div>
-        """, unsafe_allow_html=True)
+# Header avec logo et titre alignés
+st.markdown(f"""
+    <div class='header-container'>
+        <img src='data:image/png;base64,{LOGO_BASE64}' class='logo'>
+        <h1 class='title-text'>VD Global</h1>
+    </div>
+    <p class='subtitle-text'>Diamond Data Analysis Tool</p>
+""", unsafe_allow_html=True)
+
+# Le reste de votre code...
 # Mapping data directly in the code
 SHAPE_MAPPING = {
     'RB': 'Round Brilliant Cut',
