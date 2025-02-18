@@ -5,7 +5,7 @@ import re
 # Configuration de la page
 st.set_page_config(
     page_title="VD Global - Diamond Analysis",
-    page_icon="💎",
+    page_icon="logovdlobal.png",
     layout="wide"
 )
 
