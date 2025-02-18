@@ -81,31 +81,17 @@ SHAPE_MAPPING = {
     'RDC': 'Radiant Cut'
 }
 
-CLARITY_MAPPING = {
-    'FL': 'FL',
-    'IF': 'IF',
-    'VVS1': 'VVS1',
-    'VVS2': 'VVS2',
-    'VS1': 'VS1',
-    'VS2': 'VS2',
-    'SI1': 'SI1',
-    'SI2': 'SI2',
-    'I1': 'I1',
-    'I2': 'I2',
-    'I3': 'I3'
-}
-
 # Sort clarity codes by length to avoid confusion (e.g., "SI2" vs "I2")
-sorted_clarity_codes = sorted(CLARITY_MAPPING.keys(), key=len, reverse=True)
+sorted_clarity_codes = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1', 'I2', 'I3']
 
 def extracting_clarity(description):
     """
-    Extrait la clarté à partir de la description à l'aide des codes triés.
+    Extrait la clarté à partir de la description et retourne directement l'acronyme.
     """
     description = str(description).upper()
     for clarity_code in sorted_clarity_codes:
         if clarity_code in description:
-            return CLARITY_MAPPING[clarity_code]
+            return clarity_code
     return None
 
 def extract_color(description):
@@ -217,7 +203,7 @@ def extract_dimensions(description):
             height_range = None
         return min_dia, min_dia, height_range, mm_range, None
 
-    # 7. Autres formats (ex: "x.xx/x.xx/x.xx" ou "x.xxXx.xxXx.xx")
+    # 7. Autres formats
     slash_match = re.search(r'(\d+\.\d+)/(\d+\.\d+)/(\d+\.\d+)', description)
     if slash_match:
         return float(slash_match.group(1)), float(slash_match.group(2)), float(slash_match.group(3)), None, None
@@ -235,12 +221,10 @@ def extract_pcs_carat(description):
         return "N/A"
     description = description.upper()
     
-    # Recherche d'un format fractionnaire après "PCT/CT" ou "PCS/CTS"
     frac_match = re.search(r'(?:PCS/CTS|PCT/CT)\s*(\d+)/(\d+)', description)
     if frac_match:
         return frac_match.group(2)
         
-    # Recherche des formats PC/CTS ou P/CTS avec décimales
     pc_cts_match = re.search(r'PC/?CTS\s*(\d+\.?\d*)', description)
     if pc_cts_match:
         return pc_cts_match.group(1)
@@ -328,8 +312,8 @@ if uploaded_file:
 
         # Affichage des statistiques
         st.markdown("""
-            <div style='background-color: #e9ecef; padding: 1rem; border-radius: 0.5rem; margin: 2rem 0;'>
-                <h3 style='margin-bottom: 1rem;'>Data Summary</h3>
+            <div style='background-color: #2c3e50; color: white; padding: 1rem; border-radius: 0.5rem; margin: 2rem 0;'>
+                <h3 style='margin-bottom: 1rem; color: #3498db;'>Data Summary</h3>
             </div>
         """, unsafe_allow_html=True)
         
