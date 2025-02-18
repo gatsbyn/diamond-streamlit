@@ -1,46 +1,58 @@
 import streamlit as st
 import pandas as pd
 import re
-from pathlib import Path
+from PIL import Image
+import os
 
 # Configuration de la page
 st.set_page_config(
     page_title="VD Global - Diamond Analysis",
-    page_icon="💎",  # On garde temporairement l'icône diamant
+    page_icon="💎",
     layout="wide"
 )
 
-# Custom CSS (reste inchangé)
+# Custom CSS
 st.markdown("""
     <style>
     .main {
         padding: 0rem 5rem;
     }
-    # ... (reste du CSS)
+    div[data-testid="stImage"] {
+        text-align: center;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Header with company logo/name
+# Essayer de charger le logo depuis le dossier assets
 try:
-    # Utilisation de st.image pour le logo
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.image("assets/logovdlobal.png", width=100)
+    # Utiliser directement le chemin relatif vers le dossier assets
+    st.image("assets/logovdglobal.png", width=200)
+    st.markdown("""
+        <div style='text-align: center;'>
+            <h1>VD Global</h1>
+            <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
+        </div>
+    """, unsafe_allow_html=True)
+except Exception as e:
+    # En cas d'échec, essayer le dossier static
+    try:
+        st.image("static/logovdglobal.png", width=200)
         st.markdown("""
             <div style='text-align: center;'>
                 <h1>VD Global</h1>
                 <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
             </div>
         """, unsafe_allow_html=True)
-except FileNotFoundError:
-    st.warning("Logo not found. Please make sure the logo file is in the correct location.")
-    st.markdown("""
-        <div style='text-align: center; padding: 2rem 0;'>
-            <h1>VD Global</h1>
-            <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
-        </div>
-    """, unsafe_allow_html=True)
-
+    except Exception as e:
+        st.markdown("""
+            <div style='text-align: center; padding: 2rem 0;'>
+                <h1>VD Global</h1>
+                <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
+            </div>
+        """, unsafe_allow_html=True)
 # Mapping data directly in the code
 SHAPE_MAPPING = {
     'RB': 'Round Brilliant Cut',
