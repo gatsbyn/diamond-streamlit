@@ -2,6 +2,51 @@ import streamlit as st
 import pandas as pd
 import re
 
+# Configuration de la page
+st.set_page_config(
+    page_title="VD Global - Diamond Analysis",
+    page_icon="💎",
+    layout="wide"
+)
+
+# Custom CSS
+st.markdown("""
+    <style>
+    .main {
+        padding: 0rem 5rem;
+    }
+    .stTitle {
+        font-size: 3rem !important;
+        padding-bottom: 2rem;
+    }
+    .stAlert {
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+    .uploadBox {
+        border: 2px dashed #cccccc;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    .stDataFrame {
+        padding: 1rem 0;
+    }
+    .stDownloadButton {
+        padding: 1rem 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Header with company logo/name
+st.markdown("""
+    <div style='text-align: center; padding: 2rem 0;'>
+        <h1>💎 VD Global</h1>
+        <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
+    </div>
+""", unsafe_allow_html=True)
+
 # Mapping data directly in the code
 SHAPE_MAPPING = {
     'RB': 'Round Brilliant Cut',
@@ -172,7 +217,7 @@ def extract_dimensions(description):
             height_range = None
         return min_dia, min_dia, height_range, mm_range, None
 
-    # 7. Autres formats
+    # 7. Autres formats (ex: "x.xx/x.xx/x.xx" ou "x.xxXx.xxXx.xx")
     slash_match = re.search(r'(\d+\.\d+)/(\d+\.\d+)/(\d+\.\d+)', description)
     if slash_match:
         return float(slash_match.group(1)), float(slash_match.group(2)), float(slash_match.group(3)), None, None
@@ -190,10 +235,12 @@ def extract_pcs_carat(description):
         return "N/A"
     description = description.upper()
     
+    # Recherche d'un format fractionnaire après "PCT/CT" ou "PCS/CTS"
     frac_match = re.search(r'(?:PCS/CTS|PCT/CT)\s*(\d+)/(\d+)', description)
     if frac_match:
         return frac_match.group(2)
         
+    # Recherche des formats PC/CTS ou P/CTS avec décimales
     pc_cts_match = re.search(r'PC/?CTS\s*(\d+\.?\d*)', description)
     if pc_cts_match:
         return pc_cts_match.group(1)
@@ -225,53 +272,113 @@ def extract_gia_number(description):
         return gia_match.group(1)
     return "UNKNOWN"
 
-# Streamlit App
-st.title("Diamond Data Analysis")
+# Interface principale
+st.markdown("""
+    <div style='background-color: #f8f9fa; padding: 2rem; border-radius: 0.5rem; margin: 2rem 0;'>
+        <h3 style='margin-bottom: 1rem;'>Instructions</h3>
+        <p>1. Upload your Trade+Search Excel file using the button below</p>
+        <p>2. The tool will automatically process the data and extract key information</p>
+        <p>3. Review the processed data in the interactive table</p>
+        <p>4. Download the processed file for further use</p>
+    </div>
+""", unsafe_allow_html=True)
 
-# Upload the Trade+Search file
-uploaded_file = st.file_uploader("Upload the Trade+Search file to analyze", type=["xlsx"])
+# File uploader with custom styling
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.markdown('<div class="uploadBox">', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("📂 Upload Trade+Search File", type=["xlsx"])
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if uploaded_file:
-    # Chargement du fichier
-    df = pd.read_excel(uploaded_file)
+    with st.spinner('Processing data...'):
+        # Chargement du fichier
+        df = pd.read_excel(uploaded_file)
 
-    if 'Description of the goods' not in df.columns:
-        st.error("'Description of the goods' column not found in the uploaded file.")
-        st.stop()
+        if 'Description of the goods' not in df.columns:
+            st.error("❌ 'Description of the goods' column not found in the uploaded file.")
+            st.stop()
 
-    # Création et remplissage des colonnes
-    df['Shape'] = df['Description of the goods'].apply(extract_shape)
-    df['Empty Column'] = ''
-    df['Clarity'] = df['Description of the goods'].apply(extracting_clarity)
-    df['Color'] = df['Description of the goods'].apply(extract_color)
-    df['Certi Number'] = df['Description of the goods'].apply(extract_gia_number)
-    
-    dimensions_df = df['Description of the goods'].apply(
-        lambda x: pd.Series(extract_dimensions(x), 
-                              index=['Length', 'Width', 'Height', 'MM Range', 'Depth']))
-    for col in dimensions_df.columns:
-        df[col] = dimensions_df[col]
+        # Création et remplissage des colonnes
+        df['Shape'] = df['Description of the goods'].apply(extract_shape)
+        df['Empty Column'] = ''
+        df['Clarity'] = df['Description of the goods'].apply(extracting_clarity)
+        df['Color'] = df['Description of the goods'].apply(extract_color)
+        df['Certi Number'] = df['Description of the goods'].apply(extract_gia_number)
+        
+        dimensions_df = df['Description of the goods'].apply(
+            lambda x: pd.Series(extract_dimensions(x), 
+                                index=['Length', 'Width', 'Height', 'MM Range', 'Depth']))
+        for col in dimensions_df.columns:
+            df[col] = dimensions_df[col]
 
-    df['PCS/Carat'] = df['Description of the goods'].apply(extract_pcs_carat)
-    df['Pieces per Carat Weight'] = df['PCS/Carat'].apply(parse_pcs_carat_weight)
+        df['PCS/Carat'] = df['Description of the goods'].apply(extract_pcs_carat)
+        df['Pieces per Carat Weight'] = df['PCS/Carat'].apply(parse_pcs_carat_weight)
 
-    df['Height'] = df['Height'].combine_first(df['Depth'])
-    df.drop(columns=['Depth'], inplace=True)
+        df['Height'] = df['Height'].combine_first(df['Depth'])
+        df.drop(columns=['Depth'], inplace=True)
 
-    # Conversion de la colonne Height en chaîne pour éviter les erreurs Arrow
-    df['Height'] = df['Height'].astype(str)
+        # Conversion de la colonne Height en chaîne
+        df['Height'] = df['Height'].astype(str)
 
-    column_order = ['Description of the goods', 'Shape', 'Empty Column', 'Clarity', 
-                    'Color', 'Certi Number', 'Length', 'Width', 'Height', 'MM Range', 
-                    'PCS/Carat', 'Pieces per Carat Weight']
-    df = df[column_order]
+        column_order = ['Description of the goods', 'Shape', 'Empty Column', 'Clarity', 
+                       'Color', 'Certi Number', 'Length', 'Width', 'Height', 'MM Range', 
+                       'PCS/Carat', 'Pieces per Carat Weight']
+        df = df[column_order]
 
-    st.subheader("Processed Data")
-    st.dataframe(df)
+        # Affichage des statistiques
+        st.markdown("""
+            <div style='background-color: #e9ecef; padding: 1rem; border-radius: 0.5rem; margin: 2rem 0;'>
+                <h3 style='margin-bottom: 1rem;'>Data Summary</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Entries", len(df))
+        with col2:
+            st.metric("Unique Shapes", df['Shape'].nunique())
+        with col3:
+            st.metric("Unique Colors", df['Color'].nunique())
+        with col4:
+            st.metric("Unique Clarities", df['Clarity'].nunique())
 
-    output_file = "Processed_Trade.xlsx"
-    df.to_excel(output_file, index=False)
-    with open(output_file, "rb") as f:
-        st.download_button("Download the processed file", f, file_name="Processed_Trade.xlsx")
+        # Affichage du DataFrame
+        st.markdown("<h3 style='margin: 2rem 0;'>Processed Data</h3>", unsafe_allow_html=True)
+        st.dataframe(df, use_container_width=True)
+
+        # Export button
+        output_file = "Processed_Trade.xlsx"
+        df.to_excel(output_file, index=False)
+        with open(output_file, "rb") as f:
+            st.download_button(
+                "📥 Download Processed File",
+                f,
+                file_name="VD_Global_Processed_Trade.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+        # Affichage des graphiques
+        st.markdown("<h3 style='margin: 2rem 0;'>Data Visualization</h3>", unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            shape_counts = df['Shape'].value_counts()
+            st.bar_chart(shape_counts)
+            st.markdown("<p style='text-align: center;'>Distribution of Shapes</p>", unsafe_allow_html=True)
+            
+        with col2:
+            clarity_counts = df['Clarity'].value_counts()
+            st.bar_chart(clarity_counts)
+            st.markdown("<p style='text-align: center;'>Distribution of Clarity</p>", unsafe_allow_html=True)
+
 else:
-    st.info("Please upload the Trade+Search file to proceed.")
+    st.info("👆 Please upload your Trade+Search file to begin the analysis.")
+
+# Footer
+st.markdown("""
+    <div style='text-align: center; padding: 2rem 0; margin-top: 3rem; border-top: 1px solid #eee;'>
+        <p>VD Global Diamond Analysis Tool</p>
+        <p style='color: #666; font-size: 0.8rem;'>© 2024 VD Global. All rights reserved.</p>
+    </div>
+""", unsafe_allow_html=True)
