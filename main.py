@@ -1,11 +1,17 @@
 import streamlit as st
 import pandas as pd
 import re
+import base64
+from pathlib import Path
+
+# Définir le chemin vers le logo
+current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
+logo_path = current_dir / "assets" / "logovdlobal.png"
 
 # Configuration de la page
 st.set_page_config(
     page_title="VD Global - Diamond Analysis",
-    page_icon="logovdlobal.png",
+    page_icon=str(logo_path),
     layout="wide"
 )
 
@@ -40,9 +46,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header with company logo/name
-st.markdown("""
+with open(logo_path, "rb") as f:
+    logo_contents = f.read()
+    logo_b64 = base64.b64encode(logo_contents).decode()
+
+st.markdown(f"""
     <div style='text-align: center; padding: 2rem 0;'>
-        <img src='logovdlobal.png' style='width: 100px; margin-bottom: 1rem;'>
+        <img src='data:image/png;base64,{logo_b64}' style='width: 100px; margin-bottom: 1rem;'>
         <h1>VD Global</h1>
         <p style='font-size: 1.2rem; color: #666;'>Diamond Data Analysis Tool</p>
     </div>
