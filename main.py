@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 import re
-from logotest import LOGO_BASE64  # Import de la chaîne base64
+from logotest import LOGO_BASE64
 
 # Configuration de la page
 st.set_page_config(
-    page_title="VD Global - Diamond Analysis lol",
+    page_title="VD Global - Diamond Analysis",
     page_icon="💎",
     layout="wide"
 )
@@ -49,8 +49,7 @@ st.markdown(f"""
     <p class='subtitle-text'>Diamond Data Analysis Tool</p>
 """, unsafe_allow_html=True)
 
-# Le reste de votre code...
-# Mapping data directly in the code
+# Mapping data
 SHAPE_MAPPING = {
     'RB': 'Round Brilliant Cut',
     'RD': 'Round Brilliant Cut',
@@ -84,12 +83,12 @@ SHAPE_MAPPING = {
     'RDC': 'Radiant Cut'
 }
 
-# Sort clarity codes by length to avoid confusion (e.g., "SI2" vs "I2")
+# Sort clarity codes by length
 sorted_clarity_codes = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1', 'I2', 'I3']
 
 def extracting_clarity(description):
     """
-    Extrait la clarté à partir de la description et retourne directement l'acronyme.
+    Extrait la clarté à partir de la description.
     """
     description = str(description).upper()
     for clarity_code in sorted_clarity_codes:
@@ -99,7 +98,7 @@ def extracting_clarity(description):
 
 def extract_color(description):
     """
-    Extrait la couleur à partir de la description en utilisant des codes connus.
+    Extrait la couleur à partir de la description.
     """
     description = str(description).upper()
     if "WH" in description:
@@ -119,7 +118,7 @@ def extract_color(description):
 
 def extract_shape(description):
     """
-    Extrait la forme à partir de la description en se basant sur la mapping.
+    Extrait la forme à partir de la description.
     """
     description = str(description).lower()
     for code, shape in SHAPE_MAPPING.items():
@@ -145,7 +144,7 @@ def extract_dimensions(description):
         width  = float(paren_dash_match.group(2))
         height = float(paren_dash_match.group(3))
         mm_range = f"{length}-{width}"
-        return length, length, height, mm_range, None
+        return length, width, height, mm_range, None
 
     # 2. Format "(x.xx * y.yy * z.zz)"
     star_match = re.search(r'\((\d+\.\d+)\s*\*\s*(\d+\.\d+)\s*\*\s*(\d+\.\d+)\)', description)
@@ -206,19 +205,39 @@ def extract_dimensions(description):
             height_range = None
         return min_dia, min_dia, height_range, mm_range, None
 
-    # 7. Autres formats
-    slash_match = re.search(r'(\d+\.\d+)/(\d+\.\d+)/(\d+\.\d+)', description)
+    # 7. Format pour cas comme "CPD MARQUISE /NON CERT /F /VVS2 /NC/5.4 /2.86 /1.68"
+    if '/NC' in description:
+        after_nc = description.split('/NC')[-1]
+        slash_match = re.search(r'(\d+\.\d+)\s*/\s*(\d+\.\d+)\s*/\s*(\d+\.\d+)', after_nc)
+        if slash_match:
+            length = float(slash_match.group(1))
+            width = float(slash_match.group(2))
+            height = float(slash_match.group(3))
+            mm_range = f"{length}-{width}"
+            return length, width, height, mm_range, None
+
+    # 8. Autres formats avec slash
+    slash_match = re.search(r'(\d+\.\d+)\s*/\s*(\d+\.\d+)\s*/\s*(\d+\.\d+)', description)
     if slash_match:
-        return float(slash_match.group(1)), float(slash_match.group(2)), float(slash_match.group(3)), None, None
+        length = float(slash_match.group(1))
+        width = float(slash_match.group(2))
+        height = float(slash_match.group(3))
+        mm_range = f"{length}-{width}"
+        return length, width, height, mm_range, None
+
     x_match = re.search(r'(\d+\.\d+)X(\d+\.\d+)X(\d+\.\d+)', description)
     if x_match:
-        return float(x_match.group(1)), float(x_match.group(2)), float(x_match.group(3)), None, None
+        length = float(x_match.group(1))
+        width = float(x_match.group(2))
+        height = float(x_match.group(3))
+        mm_range = f"{length}-{width}"
+        return length, width, height, mm_range, None
 
     return None, None, None, None, None
 
 def extract_pcs_carat(description):
     """
-    Extrait la valeur PCS/Carat en gérant notamment les formats fractionnaires.
+    Extrait la valeur PCS/Carat.
     """
     if not isinstance(description, str):
         return "N/A"
@@ -239,7 +258,7 @@ def extract_pcs_carat(description):
 
 def parse_pcs_carat_weight(pcs_carat):
     """
-    Convertit la valeur extraite de PCS/Carat en float.
+    Convertit la valeur PCS/Carat en float.
     """
     if pcs_carat == "N/A" or not pcs_carat:
         return None
@@ -250,7 +269,7 @@ def parse_pcs_carat_weight(pcs_carat):
 
 def extract_gia_number(description):
     """
-    Extrait le numéro GIA depuis la description.
+    Extrait le numéro GIA.
     """
     if not isinstance(description, str):
         return "UNKNOWN"
@@ -308,9 +327,10 @@ if uploaded_file:
         # Conversion de la colonne Height en chaîne
         df['Height'] = df['Height'].astype(str)
 
+        # Définition de l'ordre des colonnes (utilisant la colonne Supplier existante)
         column_order = ['Description of the goods', 'Shape', 'Empty Column', 'Clarity', 
-                       'Color', 'Certi Number', 'Length', 'Width', 'Height', 'MM Range', 
-                       'PCS/Carat', 'Pieces per Carat Weight']
+                       'Color', 'Supplier', 'Certi Number', 'Length', 'Width', 'Height', 
+                       'MM Range', 'PCS/Carat', 'Pieces per Carat Weight']
         df = df[column_order]
 
         # Affichage des statistiques
@@ -320,7 +340,7 @@ if uploaded_file:
             </div>
         """, unsafe_allow_html=True)
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             st.metric("Total Entries", len(df))
         with col2:
@@ -329,10 +349,12 @@ if uploaded_file:
             st.metric("Unique Colors", df['Color'].nunique())
         with col4:
             st.metric("Unique Clarities", df['Clarity'].nunique())
+        with col5:
+            st.metric("Unique Suppliers", df['Supplier'].nunique())
 
         # Affichage du DataFrame
         st.markdown("<h3 style='margin: 2rem 0;'>Processed Data</h3>", unsafe_allow_html=True)
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width=1500, height=400)
 
         # Export button
         output_file = "Processed_Trade.xlsx"
@@ -347,7 +369,7 @@ if uploaded_file:
 
         # Affichage des graphiques
         st.markdown("<h3 style='margin: 2rem 0;'>Data Visualization</h3>", unsafe_allow_html=True)
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             shape_counts = df['Shape'].value_counts()
@@ -358,6 +380,11 @@ if uploaded_file:
             clarity_counts = df['Clarity'].value_counts()
             st.bar_chart(clarity_counts)
             st.markdown("<p style='text-align: center;'>Distribution of Clarity</p>", unsafe_allow_html=True)
+            
+        with col3:
+            supplier_counts = df['Supplier'].value_counts()
+            st.bar_chart(supplier_counts)
+            st.markdown("<p style='text-align: center;'>Distribution of Suppliers</p>", unsafe_allow_html=True)
 
 else:
     st.info("👆 Please upload your file to begin the analysis.")
