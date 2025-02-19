@@ -305,7 +305,7 @@ if uploaded_file:
             st.error("❌ 'Description of the goods' column not found in the uploaded file.")
             st.stop()
 
-        # Création et remplissage des colonnes
+        # Création et remplissage des colonnes extraites de la description
         df['Shape'] = df['Description of the goods'].apply(extract_shape)
         df['Empty Column'] = ''
         df['Clarity'] = df['Description of the goods'].apply(extracting_clarity)
@@ -327,12 +327,35 @@ if uploaded_file:
         # Conversion de la colonne Height en chaîne
         df['Height'] = df['Height'].astype(str)
 
-        # Définition de l'ordre des colonnes (utilisant la colonne Supplier existante)
-        column_order = ['Description of the goods', 'Shape', 'Empty Column', 'Clarity', 
-                       'Color', 'Supplier', 'Certi Number', 'Length', 'Width', 'Height', 
-                       'MM Range', 'PCS/Carat', 'Pieces per Carat Weight']
-        df = df[column_order]
+        # Nouvel ordre des colonnes incluant toutes les colonnes originales et extraites
+        column_order = [
+            'Date',
+            'Description of the goods', 
+            'Shape', 
+            'Empty Column', 
+            'Clarity', 
+            'Color', 
+            'Supplier',
+            'Purchaser',
+            'Total($)',
+            'Unit Price($)',
+            'Weight(KG)',
+            'Quantity',
+            'Unit',
+            'Certi Number', 
+            'Length', 
+            'Width', 
+            'Height', 
+            'MM Range', 
+            'PCS/Carat', 
+            'Pieces per Carat Weight'
+        ]
+        
+        # S'assurer que toutes les colonnes existent avant de les réorganiser
+        existing_columns = [col for col in column_order if col in df.columns]
+        df = df[existing_columns]
 
+        # Le reste du code reste identique...
         # Affichage des statistiques
         st.markdown("""
             <div style='background-color: #2c3e50; color: white; padding: 1rem; border-radius: 0.5rem; margin: 2rem 0;'>
