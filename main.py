@@ -136,12 +136,12 @@ def extract_dimensions(description):
         return None, None, None, None, None
 
     description = description.upper()
-
+    
     # 1. Format "(x.xx - y.yy * z.zz)"
     paren_dash_match = re.search(r'\((\d+\.\d+)\s*-\s*(\d+\.\d+)\s*\*\s*(\d+\.\d+)\)', description)
     if paren_dash_match:
         length = float(paren_dash_match.group(1))
-        width  = float(paren_dash_match.group(2))
+        width = float(paren_dash_match.group(2))
         height = float(paren_dash_match.group(3))
         mm_range = f"{length}-{width}"
         return length, width, height, mm_range, None
@@ -150,7 +150,7 @@ def extract_dimensions(description):
     star_match = re.search(r'\((\d+\.\d+)\s*\*\s*(\d+\.\d+)\s*\*\s*(\d+\.\d+)\)', description)
     if star_match:
         length = float(star_match.group(1))
-        width  = float(star_match.group(2))
+        width = float(star_match.group(2))
         height = float(star_match.group(3))
         mm_range = f"{length}-{width}"
         return length, width, height, mm_range, None
@@ -225,6 +225,7 @@ def extract_dimensions(description):
         mm_range = f"{length}-{width}"
         return length, width, height, mm_range, None
 
+    # 9. Format avec "X" comme séparateur (e.g., 3.50X3.48X2.17)
     x_match = re.search(r'(\d+\.\d+)X(\d+\.\d+)X(\d+\.\d+)', description)
     if x_match:
         length = float(x_match.group(1))
@@ -232,6 +233,93 @@ def extract_dimensions(description):
         height = float(x_match.group(3))
         mm_range = f"{length}-{width}"
         return length, width, height, mm_range, None
+        
+    # 10. Format avec "MM" et chiffres (ex: "4.5MM - 4.8MM")
+    mm_range_match = re.search(r'(\d+\.\d+)\s*MM\s*-\s*(\d+\.\d+)\s*MM', description)
+    if mm_range_match:
+        min_mm = float(mm_range_match.group(1))
+        max_mm = float(mm_range_match.group(2))
+        mm_range = f"{min_mm}-{max_mm}"
+        return min_mm, max_mm, None, mm_range, None
+        
+    # 11. Format avec juste "MM" (ex: "4.7MM")
+    single_mm_match = re.search(r'(\d+\.\d+)\s*MM', description)
+    if single_mm_match:
+        mm_value = float(single_mm_match.group(1))
+        return mm_value, mm_value, None, str(mm_value), None
+    
+    # 12. Format avec dimensions entre parenthèses (ex: "(4.8-5.1)")
+    paren_dims = re.search(r'\((\d+\.\d+)\s*-\s*(\d+\.\d+)\)', description)
+    if paren_dims:
+        min_dim = float(paren_dims.group(1))
+        max_dim = float(paren_dims.group(2))
+        mm_range = f"{min_dim}-{max_dim}"
+        return min_dim, max_dim, None, mm_range, None
+    
+    # 13. Format avec dimensions juste comme nombres séparés par "-" (ex: "4.8-5.1")
+    simple_dims = re.search(r'(\d+\.\d+)\s*-\s*(\d+\.\d+)', description)
+    if simple_dims:
+        min_dim = float(simple_dims.group(1))
+        max_dim = float(simple_dims.group(2))
+        mm_range = f"{min_dim}-{max_dim}"
+        return min_dim, max_dim, None, mm_range, None
+    
+    # 14. Format avec "SIZE" suivi de dimensions (ex: "SIZE:3.0-3.5MM")
+    size_match = re.search(r'SIZE\s*:?\s*(\d+\.\d+)\s*-\s*(\d+\.\d+)\s*MM', description)
+    if size_match:
+        min_size = float(size_match.group(1))
+        max_size = float(size_match.group(2))
+        mm_range = f"{min_size}-{max_size}"
+        return min_size, max_size, None, mm_range, None
+        
+    # 15. Format avec "MM SIZE" suivi de dimensions (ex: "MM SIZE: 1.70-2.00")
+    mm_size_match = re.search(r'MM\s+SIZE\s*:?\s*(\d+\.\d+)\s*-\s*(\d+\.\d+)', description)
+    if mm_size_match:
+        min_size = float(mm_size_match.group(1))
+        max_size = float(mm_size_match.group(2))
+        mm_range = f"{min_size}-{max_size}"
+        return min_size, max_size, None, mm_range, None
+        
+    # 16. Format avec MM suivi de TO (ex: "1.00MM TO 1.10MM")
+    mm_to_match = re.search(r'(\d+\.\d+)\s*MM\s+TO\s+(\d+\.\d+)\s*MM', description)
+    if mm_to_match:
+        min_mm = float(mm_to_match.group(1))
+        max_mm = float(mm_to_match.group(2))
+        mm_range = f"{min_mm}-{max_mm}"
+        return min_mm, max_mm, None, mm_range, None
+    
+    # 17. Recherche de nombres simples (au moins 3 chiffres avec décimale)
+    # Nous cherchons tous les nombres dans la description
+    all_numbers = re.findall(r'\b(\d+\.\d+)\b', description)
+    
+    # Si nous avons au moins 3 nombres, supposons qu'ils représentent L, W, H
+    if len(all_numbers) >= 3:
+        try:
+            length = float(all_numbers[0])
+            width = float(all_numbers[1])
+            height = float(all_numbers[2])
+            mm_range = f"{length}-{width}"
+            return length, width, height, mm_range, None
+        except (ValueError, IndexError):
+            pass
+    
+    # Si nous avons au moins 2 nombres, supposons qu'ils représentent la plage MM
+    elif len(all_numbers) >= 2:
+        try:
+            min_dim = float(all_numbers[0])
+            max_dim = float(all_numbers[1])
+            mm_range = f"{min_dim}-{max_dim}"
+            return min_dim, max_dim, None, mm_range, None
+        except (ValueError, IndexError):
+            pass
+            
+    # Si nous avons au moins 1 nombre, utilisons-le comme dimension unique
+    elif len(all_numbers) >= 1:
+        try:
+            mm_value = float(all_numbers[0])
+            return mm_value, mm_value, None, str(mm_value), None
+        except (ValueError, IndexError):
+            pass
 
     return None, None, None, None, None
 
@@ -278,6 +366,24 @@ def extract_gia_number(description):
         return gia_match.group(1)
     return "UNKNOWN"
 
+def calculate_average_weight(quantity, pieces_per_carat):
+    """
+    Calcule le poids moyen (Average Weight) basé sur Quantity / Pieces per Carat Weight
+    """
+    if quantity is None or pieces_per_carat is None or pieces_per_carat == 0:
+        return None
+    try:
+        # Convert to numeric values if they're not already
+        quantity = pd.to_numeric(quantity, errors='coerce')
+        pieces_per_carat = pd.to_numeric(pieces_per_carat, errors='coerce')
+        
+        if pd.isna(quantity) or pd.isna(pieces_per_carat) or pieces_per_carat == 0:
+            return None
+            
+        return quantity / pieces_per_carat
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
 # Interface principale
 st.markdown("""
     <div style='background-color: #2c3e50; color: white; padding: 2rem; border-radius: 0.5rem; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);'>
@@ -307,7 +413,7 @@ if uploaded_file:
 
         # Création et remplissage des colonnes extraites de la description
         df['Shape'] = df['Description of the goods'].apply(extract_shape)
-        df['Empty Column'] = ''
+        df['Empty Column'] = ''  # Colonne vide comme demandé
         df['Clarity'] = df['Description of the goods'].apply(extracting_clarity)
         df['Color'] = df['Description of the goods'].apply(extract_color)
         df['Certi Number'] = df['Description of the goods'].apply(extract_gia_number)
@@ -321,41 +427,45 @@ if uploaded_file:
         df['PCS/Carat'] = df['Description of the goods'].apply(extract_pcs_carat)
         df['Pieces per Carat Weight'] = df['PCS/Carat'].apply(parse_pcs_carat_weight)
 
+        # Calculer le poids moyen (Average Weight = Quantity / Pieces per Carat Weight)
+        df['Average Weight'] = df.apply(
+            lambda row: calculate_average_weight(row.get('Quantity'), row.get('Pieces per Carat Weight')), 
+            axis=1
+        )
+
         df['Height'] = df['Height'].combine_first(df['Depth'])
         df.drop(columns=['Depth'], inplace=True)
 
         # Conversion de la colonne Height en chaîne
         df['Height'] = df['Height'].astype(str)
 
-        # Nouvel ordre des colonnes incluant toutes les colonnes originales et extraites
-        column_order = [
-            'Date',
-            'Description of the goods', 
+        # Identifier les colonnes originales et les colonnes extraites
+        # Supposons que les colonnes originales sont toutes celles qui existaient avant notre traitement
+        original_columns = [col for col in df.columns if col not in [
+            'Shape', 'Empty Column', 'Clarity', 'Color', 'Certi Number', 
+            'Length', 'Width', 'Height', 'MM Range', 'PCS/Carat', 
+            'Pieces per Carat Weight', 'Average Weight'
+        ]]
+        
+        # Nouvel ordre des colonnes: colonnes originales, puis une colonne vide, puis colonnes extraites
+        column_order = original_columns + ['Empty Column'] + [
             'Shape', 
-            'Empty Column', 
             'Clarity', 
-            'Color', 
-            'Supplier',
-            'Purchaser',
-            'Total($)',
-            'Unit Price($)',
-            'Weight(KG)',
-            'Quantity',
-            'Unit',
+            'Color',
             'Certi Number', 
             'Length', 
             'Width', 
             'Height', 
             'MM Range', 
             'PCS/Carat', 
-            'Pieces per Carat Weight'
+            'Pieces per Carat Weight',
+            'Average Weight'
         ]
         
         # S'assurer que toutes les colonnes existent avant de les réorganiser
         existing_columns = [col for col in column_order if col in df.columns]
         df = df[existing_columns]
 
-        # Le reste du code reste identique...
         # Affichage des statistiques
         st.markdown("""
             <div style='background-color: #2c3e50; color: white; padding: 1rem; border-radius: 0.5rem; margin: 2rem 0;'>
@@ -373,10 +483,25 @@ if uploaded_file:
         with col4:
             st.metric("Unique Clarities", df['Clarity'].nunique())
         with col5:
-            st.metric("Unique Suppliers", df['Supplier'].nunique())
+            if 'Supplier' in df.columns:
+                st.metric("Unique Suppliers", df['Supplier'].nunique())
+            else:
+                st.metric("Unique Suppliers", "N/A")
 
         # Affichage du DataFrame
         st.markdown("<h3 style='margin: 2rem 0;'>Processed Data</h3>", unsafe_allow_html=True)
+        
+        # Ajout d'un bouton pour afficher les données brutes pour debug
+        if st.checkbox("Show raw data for debugging"):
+            st.subheader("Raw Data (First 5 rows)")
+            st.write(df.head())
+            
+            # Afficher les dimensions extraites pour vérifier
+            st.subheader("MM Size Extraction Check (First 10 rows)")
+            debug_df = df[['Description of the goods', 'Length', 'Width', 'Height', 'MM Range']].head(10)
+            st.write(debug_df)
+        
+        # Affichage normal du DataFrame complet
         st.dataframe(df, width=1500, height=400)
 
         # Export button
@@ -405,9 +530,14 @@ if uploaded_file:
             st.markdown("<p style='text-align: center;'>Distribution of Clarity</p>", unsafe_allow_html=True)
             
         with col3:
-            supplier_counts = df['Supplier'].value_counts()
-            st.bar_chart(supplier_counts)
-            st.markdown("<p style='text-align: center;'>Distribution of Suppliers</p>", unsafe_allow_html=True)
+            if 'Supplier' in df.columns:
+                supplier_counts = df['Supplier'].value_counts()
+                st.bar_chart(supplier_counts)
+                st.markdown("<p style='text-align: center;'>Distribution of Suppliers</p>", unsafe_allow_html=True)
+            else:
+                color_counts = df['Color'].value_counts()
+                st.bar_chart(color_counts)
+                st.markdown("<p style='text-align: center;'>Distribution of Colors</p>", unsafe_allow_html=True)
 
 else:
     st.info("👆 Please upload your file to begin the analysis.")
