@@ -88,12 +88,135 @@ sorted_clarity_codes = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 
 
 def extracting_clarity(description):
     """
-    Extrait la clarté à partir de la description.
+    Extrait la clarté à partir de la description avec une gestion exhaustive des cas.
+    Gère différentes notations, espaces, formats et variantes possibles.
     """
-    description = str(description).upper()
-    for clarity_code in sorted_clarity_codes:
-        if clarity_code in description:
+    if not description or not isinstance(description, str):
+        return None
+        
+    description = str(description).upper().strip()
+    
+    # 1. Correspondance exacte avec les codes standards
+    clarity_codes = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1', 'I2', 'I3']
+    for clarity_code in clarity_codes:
+        # Chercher le code exact (entouré de délimiteurs de mots)
+        if re.search(r'\b' + re.escape(clarity_code) + r'\b', description):
             return clarity_code
+    
+    # 2. Gestion des formats avec espaces entre lettres et chiffres
+    space_patterns = [
+        (r'\bVVS\s*1\b', 'VVS1'),
+        (r'\bVVS\s*2\b', 'VVS2'),
+        (r'\bVS\s*1\b', 'VS1'),
+        (r'\bVS\s*2\b', 'VS2'),
+        (r'\bSI\s*1\b', 'SI1'),
+        (r'\bSI\s*2\b', 'SI2'),
+        (r'\bI\s*1\b', 'I1'),
+        (r'\bI\s*2\b', 'I2'),
+        (r'\bI\s*3\b', 'I3')
+    ]
+    
+    for pattern, code in space_patterns:
+        if re.search(pattern, description):
+            return code
+    
+    # 3. Gestion des variantes avec tirets ou points
+    punctuation_patterns = [
+        (r'\bVVS[-.]1\b', 'VVS1'),
+        (r'\bVVS[-.]2\b', 'VVS2'),
+        (r'\bVS[-.]1\b', 'VS1'),
+        (r'\bVS[-.]2\b', 'VS2'),
+        (r'\bSI[-.]1\b', 'SI1'),
+        (r'\bSI[-.]2\b', 'SI2'),
+        (r'\bI[-.]1\b', 'I1'),
+        (r'\bI[-.]2\b', 'I2'),
+        (r'\bI[-.]3\b', 'I3')
+    ]
+    
+    for pattern, code in punctuation_patterns:
+        if re.search(pattern, description):
+            return code
+    
+    # 4. Capturer les clauses spéciales suivies par un slash ou une parenthèse
+    slash_patterns = [
+        (r'\bVVS1/|\(VVS1\)', 'VVS1'),
+        (r'\bVVS2/|\(VVS2\)', 'VVS2'),
+        (r'\bVS1/|\(VS1\)', 'VS1'),
+        (r'\bVS2/|\(VS2\)', 'VS2'),
+        (r'\bSI1/|\(SI1\)', 'SI1'),
+        (r'\bSI2/|\(SI2\)', 'SI2'),
+        (r'\bI1/|\(I1\)', 'I1'),
+        (r'\bI2/|\(I2\)', 'I2'),
+        (r'\bI3/|\(I3\)', 'I3')
+    ]
+    
+    for pattern, code in slash_patterns:
+        if re.search(pattern, description):
+            return code
+    
+    # 5. Recherche de notations textuelles
+    text_patterns = [
+        (r'\bFLAWLESS\b', 'FL'),
+        (r'\bINTERNALLY\s*FLAWLESS\b', 'IF'),
+        (r'\bIF\b', 'IF')
+    ]
+    
+    for pattern, code in text_patterns:
+        if re.search(pattern, description):
+            return code
+    
+    # 6. Recherche de clarté générique sans numéro (moins précis, donc priorité plus basse)
+    generic_patterns = [
+        (r'\bVVS\b', 'VVS'),  # Retourne VVS sans numéro spécifique
+        (r'\bVS\b', 'VS'),    # Retourne VS sans numéro spécifique
+        (r'\bSI\b', 'SI')     # Retourne SI sans numéro spécifique
+    ]
+    
+    for pattern, code in generic_patterns:
+        if re.search(pattern, description):
+            return code
+    
+    # 7. Extraction avancée basée sur des contextes spécifiques connus dans les données
+    # Par exemple, si après "CLARITY:" ou "CL:" ou tout autre indicateur spécifique
+    clarity_indicators = [
+        r'CLARITY\s*[:=]\s*([A-Z0-9]{1,4})',
+        r'CL\s*[:=]\s*([A-Z0-9]{1,4})',
+        r'CLAR\s*[:=]\s*([A-Z0-9]{1,4})'
+    ]
+    
+    for pattern in clarity_indicators:
+        match = re.search(pattern, description)
+        if match:
+            extracted = match.group(1)
+            # Vérifier si l'extraction correspond à un code de clarté connu
+            if extracted in clarity_codes:
+                return extracted
+            # Essayer de normaliser l'extraction
+            for code in clarity_codes:
+                if code in extracted or extracted in code:
+                    return code
+    
+    # 8. Dans un contexte plus large, chercher des séquences de clarté
+    # Par exemple, "F/VVS2" ou "G VS1" ou "H-SI1"
+    color_clarity_pattern = r'[D-Z][-\s/]([A-Z]{1,3}[-\s]?[0-9]?)'
+    match = re.search(color_clarity_pattern, description)
+    if match:
+        extracted = match.group(1).replace(' ', '').replace('-', '')
+        for code in clarity_codes:
+            if code in extracted or extracted in code:
+                return code
+    
+    # 9. Dernière tentative: recherche plus permissive avec toutes les combinaisons possibles
+    all_clarity_parts = ['FL', 'IF', 'VVS', 'VS', 'SI', 'I']
+    for part in all_clarity_parts:
+        if part + '1' in description or part + ' 1' in description:
+            return part + '1'
+        if part + '2' in description or part + ' 2' in description:
+            return part + '2'
+        if part + '3' in description or part + ' 3' in description and part == 'I':
+            return part + '3'
+    
+    # 10. Si aucune clarté n'est trouvée après toutes ces tentatives
     return None
 
 def extract_color(description):
