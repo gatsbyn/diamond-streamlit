@@ -103,7 +103,13 @@ def extracting_clarity(description):
         if re.search(r'\b' + re.escape(clarity_code) + r'\b', description):
             return clarity_code
     
-    # 2. Gestion des formats avec espaces entre lettres et chiffres
+    # 2. Détection de clarté suivie directement par un nombre (sans espace)
+    # Par exemple: "CUT & POLISHED DIAMONDS ROUND WHITE SI2105 P/CTS" -> SI2
+    clarity_number_pattern = re.search(r'(SI1|SI2|VS1|VS2|VVS1|VVS2|I1|I2|I3)(\d+)', description)
+    if clarity_number_pattern:
+        return clarity_number_pattern.group(1)
+    
+    # 3. Gestion des formats avec espaces entre lettres et chiffres
     space_patterns = [
         (r'\bVVS\s*1\b', 'VVS1'),
         (r'\bVVS\s*2\b', 'VVS2'),
@@ -120,7 +126,7 @@ def extracting_clarity(description):
         if re.search(pattern, description):
             return code
     
-    # 3. Gestion des variantes avec tirets ou points
+    # 4. Gestion des variantes avec tirets ou points
     punctuation_patterns = [
         (r'\bVVS[-.]1\b', 'VVS1'),
         (r'\bVVS[-.]2\b', 'VVS2'),
@@ -137,7 +143,7 @@ def extracting_clarity(description):
         if re.search(pattern, description):
             return code
     
-    # 4. Capturer les clauses spéciales suivies par un slash ou une parenthèse
+    # 5. Capturer les clauses spéciales suivies par un slash ou une parenthèse
     slash_patterns = [
         (r'\bVVS1/|\(VVS1\)', 'VVS1'),
         (r'\bVVS2/|\(VVS2\)', 'VVS2'),
@@ -154,7 +160,7 @@ def extracting_clarity(description):
         if re.search(pattern, description):
             return code
     
-    # 5. Recherche de notations textuelles
+    # 6. Recherche de notations textuelles
     text_patterns = [
         (r'\bFLAWLESS\b', 'FL'),
         (r'\bINTERNALLY\s*FLAWLESS\b', 'IF'),
@@ -165,7 +171,7 @@ def extracting_clarity(description):
         if re.search(pattern, description):
             return code
     
-    # 6. Recherche de clarté générique sans numéro (moins précis, donc priorité plus basse)
+    # 7. Recherche de clarté générique sans numéro (moins précis, donc priorité plus basse)
     generic_patterns = [
         (r'\bVVS\b', 'VVS'),  # Retourne VVS sans numéro spécifique
         (r'\bVS\b', 'VS'),    # Retourne VS sans numéro spécifique
@@ -176,7 +182,7 @@ def extracting_clarity(description):
         if re.search(pattern, description):
             return code
     
-    # 7. Extraction avancée basée sur des contextes spécifiques connus dans les données
+    # 8. Extraction avancée basée sur des contextes spécifiques connus dans les données
     # Par exemple, si après "CLARITY:" ou "CL:" ou tout autre indicateur spécifique
     clarity_indicators = [
         r'CLARITY\s*[:=]\s*([A-Z0-9]{1,4})',
@@ -196,7 +202,7 @@ def extracting_clarity(description):
                 if code in extracted or extracted in code:
                     return code
     
-    # 8. Dans un contexte plus large, chercher des séquences de clarté
+    # 9. Dans un contexte plus large, chercher des séquences de clarté
     # Par exemple, "F/VVS2" ou "G VS1" ou "H-SI1"
     color_clarity_pattern = r'[D-Z][-\s/]([A-Z]{1,3}[-\s]?[0-9]?)'
     match = re.search(color_clarity_pattern, description)
@@ -206,7 +212,7 @@ def extracting_clarity(description):
             if code in extracted or extracted in code:
                 return code
     
-    # 9. Dernière tentative: recherche plus permissive avec toutes les combinaisons possibles
+    # 10. Dernière tentative: recherche plus permissive avec toutes les combinaisons possibles
     all_clarity_parts = ['FL', 'IF', 'VVS', 'VS', 'SI', 'I']
     for part in all_clarity_parts:
         if part + '1' in description or part + ' 1' in description:
@@ -216,7 +222,7 @@ def extracting_clarity(description):
         if part + '3' in description or part + ' 3' in description and part == 'I':
             return part + '3'
     
-    # 10. Si aucune clarté n'est trouvée après toutes ces tentatives
+    # 11. Si aucune clarté n'est trouvée après toutes ces tentatives
     return None
 
 def extract_color(description):
@@ -448,23 +454,132 @@ def extract_dimensions(description):
 
 def extract_pcs_carat(description):
     """
-    Extrait la valeur PCS/Carat.
+    Extrait la valeur PCS/Carat avec une gestion exhaustive des cas,
+    y compris lorsque seul "PCS" est mentionné ou lorsque le nombre est collé à la clarté.
     """
     if not isinstance(description, str):
         return "N/A"
     description = description.upper()
     
-    frac_match = re.search(r'(?:PCS/CTS|PCT/CT)\s*(\d+)/(\d+)', description)
+    # 1. Format où le nombre est collé à la clarté et suivi de P/CTS
+    # Par exemple: "CUT & POLISHED DIAMONDS ROUND WHITE SI2105 P/CTS" -> 105
+    clarity_number_pcts_pattern = re.search(r'(SI1|SI2|VS1|VS2|VVS1|VVS2|I1|I2|I3)(\d+)\s+P/CTS', description)
+    if clarity_number_pcts_pattern:
+        return clarity_number_pcts_pattern.group(2)
+    
+    # 2. Format fractionnel "PCS/CTS 40/1" ou "PCT/CT 40/1"
+    frac_match = re.search(r'(?:PCS/CTS|PCT/CT|PC/CT|P/CT)\s*(\d+)/(\d+)', description)
     if frac_match:
-        return frac_match.group(2)
+        numerator = frac_match.group(1)
+        denominator = frac_match.group(2)
+        return numerator
+    
+    # 3. Format avec P/CTS ou PC/CTS suivi d'un nombre
+    pc_cts_patterns = [
+        r'P/?CTS\s*(\d+\.?\d*)',
+        r'PC/?CTS\s*(\d+\.?\d*)',
+        r'P/CT\s*(\d+\.?\d*)',
+        r'PC/CT\s*(\d+\.?\d*)',
+        r'PCS/CT\s*(\d+\.?\d*)',
+        r'P/C\s*(\d+\.?\d*)'
+    ]
+    
+    for pattern in pc_cts_patterns:
+        match = re.search(pattern, description)
+        if match:
+            return match.group(1)
+    
+    # 4. Format avec espace entre le nombre et P/CTS
+    # Par exemple: "CPD ROUND WHITE SI1 59 P/CTS"
+    space_pattern = re.search(r'(\d+\.?\d*)\s+(?:P/?CTS|PC/?CTS|P/CT|PC/CT|PCS/CT|P/C)', description)
+    if space_pattern:
+        return space_pattern.group(1)
+    
+    # 5. Format où le chiffre est séparé par des caractères différents
+    alt_patterns = [
+        r'P/?CTS[-:=](\d+\.?\d*)',
+        r'PC/?CTS[-:=](\d+\.?\d*)',
+        r'PCS/CT[-:=](\d+\.?\d*)',
+        r'(?:P|PC|PCS)/(?:CT|CTS)[-:=](\d+\.?\d*)'
+    ]
+    
+    for pattern in alt_patterns:
+        match = re.search(pattern, description)
+        if match:
+            return match.group(1)
+    
+    # 6. Format avec juste "PCS" après un nombre (sans /CTS ou /CARAT)
+    # Par exemple: "CPD ROUND WHITE SI 2 62 PCS"
+    standalone_pcs_pattern = re.search(r'(\d+\.?\d*)\s+PCS\b', description)
+    if standalone_pcs_pattern:
+        return standalone_pcs_pattern.group(1)
+    
+    # 7. Recherche contextuelle - trouve les chiffres près des mentions de carats
+    pcs_terms = ["P/CTS", "PC/CTS", "PCS/CT", "PCS"]
+    for term in pcs_terms:
+        if term in description:
+            # Chercher les chiffres qui apparaissent à proximité
+            surrounding_text = re.sub(re.escape(term), "MARKER", description)
+            # Chercher un nombre avant ou après le marqueur
+            before_match = re.search(r'(\d+\.?\d*)\s*MARKER', surrounding_text)
+            after_match = re.search(r'MARKER\s*(\d+\.?\d*)', surrounding_text)
+            
+            if before_match:
+                return before_match.group(1)
+            if after_match:
+                return after_match.group(1)
+    
+    # 8. Recherche de patrons plus génériques liés aux pièces par carat
+    generic_patterns = [
+        r'(\d+)\s*PIECES?\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
+        r'(\d+)\s*PCS\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
+        r'(\d+)\s*P\s*(?:PER|/)\s*(?:CARAT|CT|CTS)'
+    ]
+    
+    for pattern in generic_patterns:
+        match = re.search(pattern, description)
+        if match:
+            return match.group(1)
+    
+    # 9. Recherche avancée des nombres après les codes de clarté
+    clarity_codes = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1', 'I2', 'I3', 'SI', 'VS', 'VVS']
+    for code in clarity_codes:
+        if code in description:
+            # Extraire tout ce qui suit le code de clarté
+            after_clarity = description.split(code, 1)[1]
+            # Chercher un nombre au début de cette partie, qui peut être collé au code ou séparé
+            num_match = re.search(r'^(\d+)|\s+(\d+)', after_clarity)
+            if num_match:
+                # Prendre le premier groupe non-None
+                num = next((g for g in num_match.groups() if g is not None), None)
+                # Vérifier si ce nombre est suivi par P/CTS ou PCS
+                num_pos = after_clarity.find(num) + len(num)
+                remaining_text = after_clarity[num_pos:].strip()
+                if "PCS" in remaining_text[:15] or "P/CTS" in remaining_text[:15]:
+                    return num
+    
+    # 10. Dernier recours: chercher un schéma courant dans les descriptions
+    # Par exemple: "WHITE SI1 62 PCS" -> prendre le nombre avant "PCS"
+    clarity_color_pattern = re.search(r'(WHITE|SI1?|VS1?|VVS1?|I1?).*?(\d+).*?PCS', description)
+    if clarity_color_pattern:
+        return clarity_color_pattern.group(2)
         
-    pc_cts_match = re.search(r'PC/?CTS\s*(\d+\.?\d*)', description)
-    if pc_cts_match:
-        return pc_cts_match.group(1)
-    p_cts_match = re.search(r'P/CTS\s*(\d+\.?\d*)', description)
-    if p_cts_match:
-        return p_cts_match.group(1)
-        
+    # 11. Chercher un nombre juste avant une mention de pièces ou carats
+    pcs_terms_alt = ["PC", "PCS", "PIECES", "P/C"]
+    for term in pcs_terms_alt:
+        pattern = re.search(r'(\d+\.?\d*)\s*' + re.escape(term), description)
+        if pattern:
+            return pattern.group(1)
+    
+    # 12. Si toutes les autres méthodes échouent, chercher n'importe quel nombre suivi 
+    # par P/CTS, PCS, ou PC dans les 15 caractères suivants
+    numbers = re.findall(r'\b(\d+\.?\d*)\b', description)
+    for num in numbers:
+        num_pos = description.find(num) + len(num)
+        next_chars = description[num_pos:num_pos+15]
+        if "P/CTS" in next_chars or " PCS" in next_chars or " PC" in next_chars:
+            return num
+    
     return "N/A"
 
 def parse_pcs_carat_weight(pcs_carat):
