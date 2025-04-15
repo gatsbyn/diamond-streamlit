@@ -455,26 +455,33 @@ def extract_dimensions(description):
 def extract_pcs_carat(description):
     """
     Extrait la valeur PCS/Carat avec une gestion exhaustive des cas,
-    y compris lorsque seul "PCS" est mentionné ou lorsque le nombre est collé à la clarté.
+    en évitant de capturer les numéros GIA et en distinguant le nombre de pièces
+    des valeurs PCS/Carat.
     """
     if not isinstance(description, str):
         return "N/A"
     description = description.upper()
     
-    # 1. Format où le nombre est collé à la clarté et suivi de P/CTS
-    # Par exemple: "CUT & POLISHED DIAMONDS ROUND WHITE SI2105 P/CTS" -> 105
-    clarity_number_pcts_pattern = re.search(r'(SI1|SI2|VS1|VS2|VVS1|VVS2|I1|I2|I3)(\d+)\s+P/CTS', description)
-    if clarity_number_pcts_pattern:
-        return clarity_number_pcts_pattern.group(2)
+    # Vérifier si la description contient un numéro GIA
+    gia_match = re.search(r'GIA[:\s]?[:]?\s*(\d{5,14})', description)
+    if not gia_match:
+        gia_match = re.search(r'GIA(\d{5,14})', description)
+    gia_number = gia_match.group(1) if gia_match else None
     
-    # 2. Format fractionnel "PCS/CTS 40/1" ou "PCT/CT 40/1"
+    # Ne pas considérer "PCS-X" comme une valeur PCS/Carat, car cela indique le nombre de pièces
+    if re.search(r'/PCS-\d+', description) or re.search(r'\bPCS-\d+', description):
+        return "N/A"
+    
+    # Format fractionnel "PCS/CTS 40/1" ou "PCT/CT 40/1"
     frac_match = re.search(r'(?:PCS/CTS|PCT/CT|PC/CT|P/CT)\s*(\d+)/(\d+)', description)
     if frac_match:
         numerator = frac_match.group(1)
-        denominator = frac_match.group(2)
+        # Vérifier que ce n'est pas un numéro GIA
+        if gia_number and numerator == gia_number:
+            return "N/A"
         return numerator
     
-    # 3. Format avec P/CTS ou PC/CTS suivi d'un nombre
+    # Format avec P/CTS ou PC/CTS suivi d'un nombre
     pc_cts_patterns = [
         r'P/?CTS\s*(\d+\.?\d*)',
         r'PC/?CTS\s*(\d+\.?\d*)',
@@ -487,15 +494,23 @@ def extract_pcs_carat(description):
     for pattern in pc_cts_patterns:
         match = re.search(pattern, description)
         if match:
-            return match.group(1)
+            value = match.group(1)
+            # Vérifier que ce n'est pas un numéro GIA
+            if gia_number and value == gia_number:
+                return "N/A"
+            return value
     
-    # 4. Format avec espace entre le nombre et P/CTS
+    # Format avec espace entre le nombre et P/CTS
     # Par exemple: "CPD ROUND WHITE SI1 59 P/CTS"
     space_pattern = re.search(r'(\d+\.?\d*)\s+(?:P/?CTS|PC/?CTS|P/CT|PC/CT|PCS/CT|P/C)', description)
     if space_pattern:
-        return space_pattern.group(1)
+        value = space_pattern.group(1)
+        # Vérifier que ce n'est pas un numéro GIA
+        if gia_number and value == gia_number:
+            return "N/A"
+        return value
     
-    # 5. Format où le chiffre est séparé par des caractères différents
+    # Format où le chiffre est séparé par des caractères différents
     alt_patterns = [
         r'P/?CTS[-:=](\d+\.?\d*)',
         r'PC/?CTS[-:=](\d+\.?\d*)',
@@ -506,80 +521,73 @@ def extract_pcs_carat(description):
     for pattern in alt_patterns:
         match = re.search(pattern, description)
         if match:
-            return match.group(1)
+            value = match.group(1)
+            # Vérifier que ce n'est pas un numéro GIA
+            if gia_number and value == gia_number:
+                return "N/A"
+            return value
     
     # 6. Format avec juste "PCS" après un nombre (sans /CTS ou /CARAT)
     # Par exemple: "CPD ROUND WHITE SI 2 62 PCS"
+    # ATTENTION: Ici, on doit distinguer "X PCS" (nombre de pièces) de "X PCS/CT" (pièces par carat)
     standalone_pcs_pattern = re.search(r'(\d+\.?\d*)\s+PCS\b', description)
     if standalone_pcs_pattern:
-        return standalone_pcs_pattern.group(1)
+        # Vérifier s'il y a une indication claire de PCS par carat à proximité
+        value = standalone_pcs_pattern.group(1)
+        context = description[max(0, description.find(value) - 15):min(len(description), description.find(value) + 20)]
+        if "PER CARAT" in context or "P/CT" in context or "PC/CT" in context or "PCS/CT" in context:
+            # C'est bien une valeur PCS/Carat
+            if gia_number and value == gia_number:
+                return "N/A"
+            return value
+        else:
+            # C'est probablement juste le nombre de pièces, pas PCS/Carat
+            return "N/A"
     
-    # 7. Recherche contextuelle - trouve les chiffres près des mentions de carats
-    pcs_terms = ["P/CTS", "PC/CTS", "PCS/CT", "PCS"]
-    for term in pcs_terms:
-        if term in description:
-            # Chercher les chiffres qui apparaissent à proximité
-            surrounding_text = re.sub(re.escape(term), "MARKER", description)
-            # Chercher un nombre avant ou après le marqueur
-            before_match = re.search(r'(\d+\.?\d*)\s*MARKER', surrounding_text)
-            after_match = re.search(r'MARKER\s*(\d+\.?\d*)', surrounding_text)
-            
-            if before_match:
-                return before_match.group(1)
-            if after_match:
-                return after_match.group(1)
-    
-    # 8. Recherche de patrons plus génériques liés aux pièces par carat
-    generic_patterns = [
-        r'(\d+)\s*PIECES?\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
-        r'(\d+)\s*PCS\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
-        r'(\d+)\s*P\s*(?:PER|/)\s*(?:CARAT|CT|CTS)'
+    # 7. Recherche contextuelle - trouve les chiffres près des mentions explicites de carats
+    # On cherche uniquement les formats qui indiquent clairement "par carat" ou "per carat"
+    explicit_per_carat_patterns = [
+        r'(\d+\.?\d*)\s*PIECES?\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
+        r'(\d+\.?\d*)\s*PCS\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
+        r'(\d+\.?\d*)\s*P\s*(?:PER|/)\s*(?:CARAT|CT|CTS)',
+        r'(\d+\.?\d*)\s*/\s*(?:CARAT|CT|CTS)',
+        r'(\d+\.?\d*)\s*PC\s*/\s*(?:CARAT|CT|CTS)'
     ]
     
-    for pattern in generic_patterns:
+    for pattern in explicit_per_carat_patterns:
         match = re.search(pattern, description)
         if match:
-            return match.group(1)
+            value = match.group(1)
+            if gia_number and value == gia_number:
+                return "N/A"
+            return value
     
-    # 9. Recherche avancée des nombres après les codes de clarté
-    clarity_codes = ['FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2', 'I1', 'I2', 'I3', 'SI', 'VS', 'VVS']
-    for code in clarity_codes:
-        if code in description:
-            # Extraire tout ce qui suit le code de clarté
-            after_clarity = description.split(code, 1)[1]
-            # Chercher un nombre au début de cette partie, qui peut être collé au code ou séparé
-            num_match = re.search(r'^(\d+)|\s+(\d+)', after_clarity)
-            if num_match:
-                # Prendre le premier groupe non-None
-                num = next((g for g in num_match.groups() if g is not None), None)
-                # Vérifier si ce nombre est suivi par P/CTS ou PCS
-                num_pos = after_clarity.find(num) + len(num)
-                remaining_text = after_clarity[num_pos:].strip()
-                if "PCS" in remaining_text[:15] or "P/CTS" in remaining_text[:15]:
-                    return num
+    # 8. Si nous avons des termes explicites de PCS/Carat dans la description,
+    # mais que nous n'avons pas encore trouvé de valeur, chercher un nombre à proximité
+    explicit_terms = ["PCS/CT", "PC/CT", "PCS/CARAT", "PC/CARAT", "PCS PER CARAT", "PC PER CARAT"]
+    for term in explicit_terms:
+        if term in description:
+            # Identifier la position du terme
+            term_pos = description.find(term)
+            # Chercher un nombre dans les 10 caractères avant ou après ce terme
+            before_text = description[max(0, term_pos - 15):term_pos]
+            after_text = description[term_pos + len(term):min(len(description), term_pos + 15)]
+            
+            before_match = re.search(r'(\d+\.?\d*)', before_text)
+            after_match = re.search(r'(\d+\.?\d*)', after_text)
+            
+            if before_match:
+                value = before_match.group(1)
+                if gia_number and value == gia_number:
+                    continue
+                return value
+            if after_match:
+                value = after_match.group(1)
+                if gia_number and value == gia_number:
+                    continue
+                return value
     
-    # 10. Dernier recours: chercher un schéma courant dans les descriptions
-    # Par exemple: "WHITE SI1 62 PCS" -> prendre le nombre avant "PCS"
-    clarity_color_pattern = re.search(r'(WHITE|SI1?|VS1?|VVS1?|I1?).*?(\d+).*?PCS', description)
-    if clarity_color_pattern:
-        return clarity_color_pattern.group(2)
-        
-    # 11. Chercher un nombre juste avant une mention de pièces ou carats
-    pcs_terms_alt = ["PC", "PCS", "PIECES", "P/C"]
-    for term in pcs_terms_alt:
-        pattern = re.search(r'(\d+\.?\d*)\s*' + re.escape(term), description)
-        if pattern:
-            return pattern.group(1)
-    
-    # 12. Si toutes les autres méthodes échouent, chercher n'importe quel nombre suivi 
-    # par P/CTS, PCS, ou PC dans les 15 caractères suivants
-    numbers = re.findall(r'\b(\d+\.?\d*)\b', description)
-    for num in numbers:
-        num_pos = description.find(num) + len(num)
-        next_chars = description[num_pos:num_pos+15]
-        if "P/CTS" in next_chars or " PCS" in next_chars or " PC" in next_chars:
-            return num
-    
+    # Si nous arrivons ici, aucune valeur PCS/Carat n'a été trouvée
     return "N/A"
 
 def parse_pcs_carat_weight(pcs_carat):
@@ -595,13 +603,35 @@ def parse_pcs_carat_weight(pcs_carat):
 
 def extract_gia_number(description):
     """
-    Extrait le numéro GIA.
+    Extrait le numéro GIA avec une gestion plus précise des cas.
+    Gère les cas où le numéro GIA est directement attaché à "GIA" sans espace.
     """
     if not isinstance(description, str):
         return "UNKNOWN"
-    gia_match = re.search(r'GIA[:\s]?[:]?\s*(\d{5,10})', description.upper())
+    
+    description = description.upper()
+    
+    # Format principal: GIA suivi d'un numéro, avec ou sans séparateurs
+    gia_match = re.search(r'GIA[:\s]?[:]?\s*(\d{5,14})', description)
     if gia_match:
         return gia_match.group(1)
+    
+    # Format alternatif: GIA collé à un numéro
+    gia_direct_match = re.search(r'GIA(\d{5,14})', description)
+    if gia_direct_match:
+        return gia_direct_match.group(1)
+    
+    # Format avec tiret ou autre séparateur
+    gia_hyphen_match = re.search(r'GIA[-_:#](\d{5,14})', description)
+    if gia_hyphen_match:
+        return gia_hyphen_match.group(1)
+    
+    # Format avec "N°" ou "No." ou "NUMBER"
+    gia_number_match = re.search(r'GIA\s*(?:N°|No\.|NUMBER)?\s*[:=]?\s*(\d{5,14})', description)
+    if gia_number_match:
+        return gia_number_match.group(1)
+    
+    # Si aucun numéro GIA n'est trouvé
     return "UNKNOWN"
 
 def calculate_average_weight(quantity, pieces_per_carat):
