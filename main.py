@@ -751,21 +751,39 @@ def extract_gia_number(description):
     # Si aucun numéro GIA n'est trouvé
     return "UNKNOWN"
 
-def calculate_average_weight(quantity, pieces_per_carat):
+def calculate_pieces_per_carat_weight(quantity, pcs_per_carat):
     """
-    Calcule le poids moyen (Average Weight) basé sur Quantity / Pieces per Carat Weight
+    Calcule le Pieces per Carat Weight basé sur Quantity * PCS/Carat
     """
-    if quantity is None or pieces_per_carat is None or pieces_per_carat == 0:
+    if quantity is None or pcs_per_carat is None:
         return None
     try:
         # Convert to numeric values if they're not already
         quantity = pd.to_numeric(quantity, errors='coerce')
-        pieces_per_carat = pd.to_numeric(pieces_per_carat, errors='coerce')
+        pcs_per_carat = pd.to_numeric(pcs_per_carat, errors='coerce')
         
-        if pd.isna(quantity) or pd.isna(pieces_per_carat) or pieces_per_carat == 0:
+        if pd.isna(quantity) or pd.isna(pcs_per_carat):
             return None
             
-        return quantity / pieces_per_carat
+        return quantity * pcs_per_carat
+    except (TypeError, ValueError):
+        return None
+
+def calculate_average_weight(quantity, pieces_per_carat_weight):
+    """
+    Calcule le poids moyen (Average Weight) basé sur Quantity / Pieces per Carat Weight
+    """
+    if quantity is None or pieces_per_carat_weight is None or pieces_per_carat_weight == 0:
+        return None
+    try:
+        # Convert to numeric values if they're not already
+        quantity = pd.to_numeric(quantity, errors='coerce')
+        pieces_per_carat_weight = pd.to_numeric(pieces_per_carat_weight, errors='coerce')
+        
+        if pd.isna(quantity) or pd.isna(pieces_per_carat_weight) or pieces_per_carat_weight == 0:
+            return None
+            
+        return quantity / pieces_per_carat_weight
     except (TypeError, ValueError, ZeroDivisionError):
         return None
 
@@ -809,7 +827,15 @@ if uploaded_file:
             df[col] = dimensions_df[col]
 
         df['PCS/Carat'] = df['Description of the goods'].apply(extract_pcs_carat)
-        df['Pieces per Carat Weight'] = df['PCS/Carat'].apply(parse_pcs_carat_weight)
+        
+        # Calculer Pieces per Carat Weight = Quantity * PCS/Carat
+        df['Pieces per Carat Weight'] = df.apply(
+            lambda row: calculate_pieces_per_carat_weight(
+                row.get('Quantity'), 
+                parse_pcs_carat_weight(row.get('PCS/Carat'))
+            ), 
+            axis=1
+        )
 
         # Calculer le poids moyen (Average Weight = Quantity / Pieces per Carat Weight)
         df['Average Weight'] = df.apply(
@@ -897,7 +923,7 @@ if uploaded_file:
                 st.markdown("<p style='text-align: center;'>Distribution of Colors</p>", unsafe_allow_html=True)
 
 else:
-    st.info("👆 Please upload your file to begin the analysis.")
+    st.info("Please upload your file to begin the analysis.")
 
 # Footer
 st.markdown("""
